@@ -1,0 +1,21 @@
+# Copy to wrangler.toml and fill in your D1 database_id:
+#   cp wrangler.toml.example wrangler.toml
+#   npx wrangler d1 create hacktricks   # prints your database_id
+# (or just run ./setup.sh, which does this for you)
+
+name = "hacktricks-mcp"
+main = "src/index.js"
+compatibility_date = "2025-01-01"
+workers_dev = true
+preview_urls = false
+
+# Auth token is a SECRET, not set here. After deploy:
+#   npx wrangler secret put MCP_TOKEN
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hacktricks"
+database_id = "PASTE_YOUR_D1_DATABASE_ID_HERE"
+
+[observability]
+enabled = true

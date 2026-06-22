@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+data.sql
+wrangler.toml
+.dev.vars
+.env*
+*.local
