@@ -21,11 +21,11 @@ HackTricks is one of the best offensive-security references on the internet — 
 
 | Tool | Arguments | Returns |
 |------|-----------|---------|
-| `search` | `query` (string), `limit` (int ≤ 25) | Ranked matches: `title`, `path`, `category`, `snippet` |
+| `search` | `query` (string), `limit` (int), `include_content` (bool, default `true`) | Ranked matches with the **full markdown `content`** of each page by default (set `include_content=false` for `snippet`-only discovery) |
 | `get_page` | `path` (string) | Full clean markdown of one page |
 | `list_section` | `section` (string, e.g. `pentesting-web`) | Every page in a top-level section |
 
-Typical agent flow: **`search`** for a technique → **`get_page`** on the best path → use the commands/payloads.
+Typical agent flow: a single **`search`** returns the matching pages *with their full content* — usually all you need to answer. Use **`get_page`** to pull a specific page (e.g. one referenced via a `Related:` link), and **`list_section`** to browse a whole domain.
 
 ## Repository layout
 

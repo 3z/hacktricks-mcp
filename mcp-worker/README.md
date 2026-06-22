@@ -25,7 +25,7 @@ npx wrangler login
 
 ## Tools
 
-- `search(query, limit=8)` — BM25 full-text search → ranked `{title, path, category, snippet}`.
+- `search(query, limit=5, include_content=true)` — BM25 full-text search → ranked results; by default each includes the page's full markdown in `content` (set `include_content=false` for `snippet` only). Bodies over 45 KB are truncated with a pointer to `get_page`.
 - `get_page(path)` — full markdown for one page.
 - `list_section(section)` — all pages under a top-level folder (e.g. `windows-hardening`).
 

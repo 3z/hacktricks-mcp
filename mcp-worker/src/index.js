@@ -16,14 +16,24 @@ const TOOLS = [
   {
     name: "search",
     description:
-      "Full-text search the HackTricks security knowledge base (982 docs: web, AD, " +
+      "Full-text search the HackTricks security knowledge base (981 docs: web, AD, " +
       "Linux/macOS/Windows privesc, network services, binary exploitation, cloud, mobile, etc.). " +
-      "Returns ranked matches with path + snippet. Use 2-4 specific terms, then open the best path with get_page.",
+      "By DEFAULT returns the ranked matching pages WITH their full markdown content (the `content` " +
+      "field), so you can read and use the techniques directly from this one call — no follow-up needed. " +
+      "Set include_content=false for lightweight snippet-only discovery. Use 2-4 specific terms.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Keywords, e.g. 'kerberoasting' or 'sql injection waf bypass'." },
-        limit: { type: "integer", description: "Max results (default 8, max 25).", default: 8 },
+        limit: {
+          type: "integer",
+          description: "Max results (default 5 with content, 8 without; max 25).",
+        },
+        include_content: {
+          type: "boolean",
+          description: "Include each page's full markdown in `content` (default true). Set false for snippets only.",
+          default: true,
+        },
       },
       required: ["query"],
     },
@@ -61,26 +71,45 @@ function ftsMatch(query) {
   return toks.map((t) => `${t}*`).join(" OR ");
 }
 
+const BODY_CAP = 45000; // per-result body char cap when returning content
+
 async function doSearch(env, args) {
-  const limit = Math.min(Math.max(parseInt(args.limit ?? 8, 10) || 8, 1), MAX_LIMIT);
+  const includeContent = args.include_content !== false; // default: return full content
+  const def = includeContent ? 5 : 8;
+  const cap = includeContent ? 10 : MAX_LIMIT; // bound response size when returning bodies
+  const limit = Math.min(Math.max(parseInt(args.limit ?? def, 10) || def, 1), cap);
   const match = ftsMatch(String(args.query || ""));
   if (!match) return { query: args.query, count: 0, results: [] };
   const sql =
     `SELECT d.path AS path, d.title AS title, d.category AS category, ` +
     `snippet(docs_fts, 2, '«', '»', '…', 14) AS snippet, ` +
-    `bm25(docs_fts, 8.0, 4.0, 1.0, 2.0) AS rank ` +
+    `bm25(docs_fts, 8.0, 4.0, 1.0, 2.0) AS rank` +
+    (includeContent ? `, d.body AS body` : ``) + ` ` +
     `FROM docs_fts JOIN docs d ON d.id = docs_fts.rowid ` +
     `WHERE docs_fts MATCH ?1 ORDER BY rank LIMIT ?2`;
   const { results } = await env.DB.prepare(sql).bind(match, limit).all();
   return {
     query: args.query,
     count: results.length,
-    results: results.map((r) => ({
-      title: r.title,
-      path: r.path,
-      category: r.category,
-      snippet: (r.snippet || "").replace(/\s+/g, " ").trim(),
-    })),
+    results: results.map((r) => {
+      const out = {
+        title: r.title,
+        path: r.path,
+        category: r.category,
+        snippet: (r.snippet || "").replace(/\s+/g, " ").trim(),
+      };
+      if (includeContent) {
+        const body = r.body || "";
+        if (body.length > BODY_CAP) {
+          out.content = body.slice(0, BODY_CAP) +
+            `\n\n…[truncated — call get_page("${r.path}") for the full page]`;
+          out.truncated = true;
+        } else {
+          out.content = body;
+        }
+      }
+      return out;
+    }),
   };
 }
 
